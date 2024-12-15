@@ -1,12 +1,11 @@
 // src/about.ts
-import router from './routerInstance'; // Импортируем общий экземпляр роутера
+import router from './routerInstance'; 
 
-// src/about.ts
 const aboutRoute = {
     onEnter: () => {
         document.body.innerHTML = `
             <h1>О нас</h1>
-            <button id="homeBtn">Вернуться на главную страницу</button>
+            <button id="homeBtn">Перейти на страницу "Главная"</button>
         `;
         document.getElementById('homeBtn')!.addEventListener('click', () => {
             router.navigate('/');
@@ -14,5 +13,4 @@ const aboutRoute = {
     }
 };
 
-export default aboutRoute; // Экспортируем маршрут
-
+export default aboutRoute;
