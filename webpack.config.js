@@ -5,11 +5,11 @@ import HtmlWebpackPlugin from "html-webpack-plugin";
 
 export default {
   mode: "development",
-  entry: "./src/index.ts", 
+  entry: "./src/index.ts",
   module: {
     rules: [
       {
-        test: /\.tsx?$/, 
+        test: /\.tsx?$/,
         use: "babel-loader",
         exclude: /node_modules/,
       },
@@ -21,7 +21,7 @@ export default {
   output: {
     filename: "bundle.js",
     // eslint-disable-next-line no-undef
-    path: path.resolve(process.cwd(), "dist"), 
+    path: path.resolve(process.cwd(), "dist"),
     clean: true,
   },
   plugins: [
