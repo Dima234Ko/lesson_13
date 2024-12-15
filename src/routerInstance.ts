@@ -1,6 +1,6 @@
 // src/routerInstance.ts
-import Router from './router';
+import Router from "./router";
 
-const router = new Router({ mode: 'hash' });
+const router = new Router({ mode: "hash" });
 
 export default router;
