@@ -1,4 +1,3 @@
-// src/router.ts
 type RouteHandler = (params?: {
   [key: string]: string;
 }) => Promise<void> | void;
@@ -31,6 +30,7 @@ class Router {
     const routeConfig = this.routes.find(({ path: routePath }) =>
       this.matchRoute(routePath, path),
     );
+
     if (!routeConfig) {
       console.error(`Route not found: ${path}`);
       return;
@@ -38,24 +38,20 @@ class Router {
 
     const { route } = routeConfig;
 
-    // Вызов onLeave для текущего маршрута, если он есть
     if (this.currentRoute && this.currentRoute.onLeave) {
       await this.currentRoute.onLeave();
     }
 
-    // Вызов onBeforeEnter, если он есть
     if (route.onBeforeEnter) {
       await route.onBeforeEnter();
     }
 
-    // Установка текущего маршрута
     this.currentRoute = route;
 
-    // Вызов onEnter
-    await route.onEnter();
+    const params = this.extractParams(routeConfig.path, path);
+    await route.onEnter(params);
 
-    // Обновление URL
-    this.push(path); // Обновляем URL после перехода
+    this.push(path);
   }
 
   matchRoute(
@@ -72,7 +68,36 @@ class Router {
     return false;
   }
 
-  init() {
+  extractParams(
+    routePath: string | RegExp | ((path: string) => boolean),
+    path: string,
+  ): { [key: string]: string } | undefined {
+    if (typeof routePath === "string" || routePath instanceof RegExp) {
+      const paramNames: string[] = [];
+      const regexString =
+        typeof routePath === "string"
+          ? routePath.replace(/:[^\s/]+/g, (param) => {
+              paramNames.push(param.substring(1));
+              return "([^/]+)";
+            })
+          : routePath.toString();
+
+      const regex = new RegExp(`^${regexString}$`);
+      const match = path.match(regex);
+
+      if (match) {
+        const params: { [key: string]: string } = {};
+        paramNames.forEach((name, index) => {
+          params[name] = match[index + 1];
+        });
+        return params;
+      }
+    }
+    return undefined;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  init(p0?: () => void) {
     if (this.mode === "hash") {
       const hash = window.location.hash.replace("#", "") || "/";
       window.addEventListener("hashchange", () => {

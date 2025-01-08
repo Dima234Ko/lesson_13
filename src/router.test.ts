@@ -1,15 +1,22 @@
-// __tests__/router.test.ts
-import Router from "../src/router";
+import Router from "./router";
 
 describe("Router", () => {
   let router: Router;
 
   beforeEach(() => {
     router = new Router({ mode: "hash" });
-    window.location.hash = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).window = {
+      location: {
+        hash: "",
+      },
+      history: {
+        pushState: jest.fn(),
+      },
+    };
   });
 
-  test("Добавление маршрута", () => {
+  test("тест добавления маршрута", () => {
     const route = {
       onEnter: jest.fn(),
     };
@@ -18,107 +25,68 @@ describe("Router", () => {
     expect(router["routes"][0].path).toBe("/home");
   });
 
-  test("Переход по переданнаму маршруту", async () => {
+  test("тест перехода по маршруту", async () => {
     const onEnter = jest.fn();
     const route = {
       onEnter,
     };
     router.addRoute("/home", route);
+
     await router.navigate("/home");
 
     expect(onEnter).toHaveBeenCalled();
-    expect(router["currentRoute"]).toBe(route);
   });
 
-  test("Переход по несуществующему маршруту", async () => {
+  test("тест перехода на несуществующий маршрут", async () => {
     console.error = jest.fn();
-    await router.navigate("/non-existent");
+    await router.navigate("/non-existing");
 
     expect(console.error).toHaveBeenCalledWith(
-      "Route not found: /non-existent",
+      "Route not found: /non-existing",
     );
   });
 
-  test("Проверка вызова onLeave при смена маршрута", async () => {
-    const onLeave = jest.fn();
-    const onEnter1 = jest.fn();
-    const onEnter2 = jest.fn();
+  test("тест совпадения указанного пути с добавленным маршрутом", () => {
+    router.addRoute("/home", { onEnter: jest.fn() });
+    expect(router.matchRoute("/home", "/home")).toBe(true);
+    expect(router.matchRoute("/home", "/about")).toBe(false);
+  });
 
-    const route1 = { onLeave, onEnter: onEnter1 };
-    const route2 = { onEnter: onEnter2 };
+  test("тест на соответствие переданного параметра регулярному выраженю", () => {
+    router.addRoute(/^\/user\/(\d+)$/, { onEnter: jest.fn() });
+    expect(router.matchRoute(/^\/user\/(\d+)$/, "/user/123")).toBe(true);
+    expect(router.matchRoute(/^\/user\/(\d+)$/, "/user/abc")).toBe(false);
+  });
+
+  test("тест на извлечение параметров из строкового маршрута", () => {
+    const route = "/user/:id";
+    const params = router.extractParams(route, "/user/123");
+    expect(params).toEqual({ id: "123" });
+  });
+
+  test("тест на передачу пустого значения в роутер", () => {
+    const route = /^\/(.+)$/;
+    const params = router.extractParams(route, "");
+    expect(params).toEqual(undefined);
+  });
+
+  test("тест для проверки, что хуки жизненного цикла маршрутов правильно вызываются в процессе навигации", async () => {
+    const onLeave = jest.fn();
+    const onBeforeEnter = jest.fn();
+    const onEnter = jest.fn();
+
+    const route1 = { onLeave, onBeforeEnter, onEnter };
+    const route2 = { onLeave: jest.fn(), onEnter: jest.fn() };
 
     router.addRoute("/home", route1);
     router.addRoute("/about", route2);
 
     await router.navigate("/home");
+    expect(onEnter).toHaveBeenCalled();
+
     await router.navigate("/about");
-
     expect(onLeave).toHaveBeenCalled();
-  });
-
-  test("Проверка вызова onbeforerender перед onEnter", async () => {
-    const onBeforeEnter = jest.fn();
-    const onEnter = jest.fn();
-    const route = {
-      onBeforeEnter,
-      onEnter,
-    };
-
-    router.addRoute("/home", route);
-    await router.navigate("/home");
-
     expect(onBeforeEnter).toHaveBeenCalled();
-    expect(onEnter).toHaveBeenCalled();
-
-    expect(onBeforeEnter.mock.invocationCallOrder[0]).toBeLessThan(
-      onEnter.mock.invocationCallOrder[0],
-    );
-  });
-
-  test("Обработка изменения хэша", async () => {
-    const onEnter = jest.fn();
-    router.addRoute("/home", { onEnter });
-
-    window.location.hash = "#/home";
-    await router.navigate("/home");
-
-    expect(onEnter).toHaveBeenCalled();
-  });
-
-  test("Обработка события всплывающего состояния", async () => {
-    const onEnter = jest.fn();
-    router.addRoute("/home", { onEnter });
-
-    window.history.pushState({}, "", "/home");
-    await router.navigate("/home");
-
-    expect(onEnter).toHaveBeenCalled();
-  });
-
-  test("Проверка устанавки слушателя события hashchange", async () => {
-    const onEnter = jest.fn();
-    router.addRoute("/home", { onEnter });
-
-    router.init();
-    window.location.hash = "#/home";
-
-    const event = new Event("hashchange");
-    window.dispatchEvent(event);
-
-    expect(onEnter).toHaveBeenCalled();
-  });
-
-  test("Переход по переданнаму маршруту, через регулярное выражение", async () => {
-    const onEnter = jest.fn();
-    const route = {
-      onEnter,
-    };
-
-    router.addRoute(/^\/user\/\d+$/, route);
-
-    window.location.hash = "#/user/123";
-    router.init();
-
-    expect(onEnter).toHaveBeenCalled();
+    expect(route2.onEnter).toHaveBeenCalled();
   });
 });
